@@ -47,6 +47,9 @@ Choose the model size based on your available VRAM and performance requirements.
 - unsloth - https://github.com/unsloth/unsloth
 - Gradio - https://github.com/gradio-app/gradio
 
+## License
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
 <br>
 
 [![Visitors](https://api.visitorbadge.io/api/visitors?path=qunash%2Fr1-overthinker&labelColor=%23d9e3f0&countColor=%23263759)](https://visitorbadge.io/status?path=qunash%2Fr1-overthinker) 
