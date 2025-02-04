@@ -43,7 +43,7 @@ Choose the model size based on your available VRAM and performance requirements.
 
 ## Related Work
 ### s1: Simple test-time scaling
-The paper "s1: Simple test-time scaling" is an independent work by Niklas Muennighoff et al. that tests and validates the approach used in this repository. It introduces a new approach to language modeling that uses extra test-time compute to improve performance. The key contributions of the paper include:
+The paper "s1: Simple test-time scaling" is an independent work by Niklas Muennighoff et al. that tests and validates the approach used in this repository. The key contributions of the paper include:
 - Developing budget forcing to control test-time compute by forcefully terminating the model’s thinking process or lengthening it by appending “Wait” multiple times to the model’s generation.
 - Curating a small dataset s1K of 1,000 questions paired with reasoning traces.
 - Achieving strong reasoning performance and test-time scaling with the Qwen2.5-32B-Instruct language model.
