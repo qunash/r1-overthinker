@@ -1,6 +1,6 @@
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/qunash/r1-overthinker/blob/master/r1_overthinker.ipynb)
 # **DeepSeek R1 Overthinker**
-Using this app you can force [DeepSeek R1](https://api-docs.deepseek.com/news/news250120) models to think more deeply by extending their reasoning process. It uses [unsloth](https://github.com/unsloth/unsloth) optimized models for better performance and unlimited context length (only limited by available VRAM).
+Using this app you can force [DeepSeek R1](https://api-docs.deepseek.com/news/news250120) models to think more deeply by extending their reasoning process. It uses [unsloth](https://github.com/unslothai/unsloth) optimized models for better performance and unlimited context length (only limited by available VRAM).
 
 The app works by detecting when the model tries to conclude thoughts too early and replacing those with prompts that encourage additional reasoning, continuing until a minimum threshold of thinking set by you is reached.
 
@@ -53,7 +53,7 @@ For more details, see the [paper's repository](https://github.com/simplescaling/
 ## Credits
 - Original idea and implementation - [vgel's gist](https://gist.github.com/vgel/8a2497dc45b1ded33287fa7bb6cc1adc)
 - DeepSeek LLM - https://github.com/deepseek-ai/DeepSeek-LLM
-- unsloth - https://github.com/unsloth/unsloth
+- unsloth - https://github.com/unslothai/unsloth
 - Gradio - https://github.com/gradio-app/gradio
 
 ## License
