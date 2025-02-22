@@ -1,8 +1,8 @@
 # DeepSeek R1 Overthinker
 
-一个基于 DeepSeek R1 模型的增强思考应用。通过检测和替换模型的思考过程，强制模型进行更深入的推理。更方便的自定义下载模型和路径，更方便修改/自定义其中组件（可实现RAG等文件上传）
+一个基于 DeepSeek R1 模型的增强思考应用。通过检测和替换模型的思考过程，强制模型进行更深入的推理。更方便的自定义下载模型和路径，考虑到unsloth目前还不支持multiple GPU，因此将unsloth置换为了vllm，更方便多卡部署和管理
 
-An enhanced thinking application based on the DeepSeek R1 model. It forces deeper reasoning by detecting and replacing the model's thinking process. Easier to customize model downloads and paths, and more convenient to modify/customize components (supporting features like RAG file upload).
+An enhanced thinking application based on the DeepSeek R1 model. It forces deeper reasoning by detecting and replacing the model's thinking process.
 
 ## 项目结构 | Project Structure
 
@@ -10,31 +10,10 @@ An enhanced thinking application based on the DeepSeek R1 model. It forces deepe
 src/
 ├── app.py              # 主应用程序入口 | Main application entry
 ├── utils.py            # 工具模块 | Utility module
-└── load_model.py       # 模型下载，snapshot_download是目前hugging face下载最方便的方式 | Model download, snapshot_download is currently the fastest way to download from Hugging Face
+└── load_model.py       # 模型下载工具 | Model download utility
 ```
 
-## 功能特点 | Features
-
-1. **简化的项目结构 | Simplified Structure**
-   - 核心功能集成在app.py中 | Core functionality integrated in app.py
-   - 独立的模型下载工具 | Standalone model download utility
-   - 易于扩展和自定义 | Easy to extend and customize
-
-2. **增强的思考过程 | Enhanced Thinking Process**
-   - 检测并扩展模型思考 | Detect and extend model thinking
-   - 可自定义思考提示词 | Customizable thinking prompts
-   - 灵活的参数控制 | Flexible parameter control
-
-## 参数说明 | Parameters
-
-- **Minimum Thinking Tokens**: 最小思考token数 | Minimum tokens for thinking process
-- **Maximum Output Tokens**: 最大输出token数 | Maximum tokens for output
-- **Maximum Reasoning Extensions**: 最大推理扩展次数 | Maximum number of reasoning extensions
-- **Temperature**: 生成温度，官方建议为0.6 | Generation temperature, officially recommended as 0.6
-- **Top-p**: 采样阈值 | Sampling threshold
-- **Repetition Penalty**: 重复惩罚系数 | Repetition penalty coefficient
-
-## 使用方法 | Usage
+## 快速开始 | Quick Start
 
 1. **安装依赖 | Install Dependencies**
    ```bash
@@ -43,36 +22,76 @@ src/
 
 2. **运行应用 | Run Application**
    ```bash
+   # 基本用法 | Basic usage
    python app.py
+
+   # 使用本地模型 | Use local model
+   python app.py --model_path /path/to/model
+
+   # 指定GPU | Specify GPU
+   python app.py --gpu_device "0,1"
    ```
+
+## 功能特点 | Features
+
+1. **增强的思考过程 | Enhanced Thinking Process**
+   - 检测并扩展模型思考 | Detect and extend model thinking
+   - 可自定义思考提示词 | Customizable thinking prompts
+   - 灵活的参数控制 | Flexible parameter control
+
+2. **可配置参数 | Configurable Parameters**
+   - Minimum Thinking Tokens: 最小思考token数
+   - Maximum Output Tokens: 最大输出token数
+   - Temperature: 生成温度（推荐0.6）
+   - Top-p & Repetition Penalty: 采样控制
+
+## GPU配置说明 | GPU Configuration
+
+1. **单/多GPU使用 | Single/Multi-GPU Usage**
+   ```bash
+   # 单GPU | Single GPU
+   python app.py --gpu_device 0
+
+   # 多GPU | Multi GPU
+   python app.py --gpu_device "1,7"  # 使用GPU 1和7
+   python app.py --gpu_device "0,1,2,3"  # 使用连续的GPU
+   ```
+
+2. **GPU内存优化 | GPU Memory Optimization**
+   - 实际可用显存 ≈ (单卡显存 × GPU数量)
+   - 内存参考值 | Memory Reference:
+     ```
+     3,000 tokens  →  ~8 GB VRAM
+     22,000 tokens → ~12 GB VRAM
+     41,000 tokens → ~16 GB VRAM
+     78,000 tokens → ~24 GB VRAM
+     ```
+   - 优化建议 | Optimization Tips:
+     1. 减小context length
+     2. 减小batch size (max_num_seqs)
+     3. 调整GPU内存使用率 (gpu_memory_utilization)
+     4. 设置环境变量: `export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`
 
 ## 注意事项 | Notes
 
-1. **模型说明 | Model Information**:
-   - 默认使用 unsloth/DeepSeek-R1-Distill-Qwen-32B 模型 | Using unsloth/DeepSeek-R1-Distill-Qwen-32B model by default
-   - 不支持GGUF格式模型 | GGUF format models are not supported
-   - 首次运行会自动下载模型 | Model will be downloaded automatically on first run
+1. **模型说明 | Model Information**
+   - 默认使用DeepSeek-R1-Distill-Qwen-32B
+   - 不支持GGUF格式
+   - 首次运行自动下载模型
 
-2. **GPU要求 | GPU Requirements**:
-   - 目前仅支持单GPU | Currently only supports single GPU
-   - 默认使用GPU 0 | Uses GPU 0 by default
-   - 可在utils.py中修改GPU设置 | GPU settings can be modified in utils.py
+2. **多GPU注意事项 | Multi-GPU Notes**
+   - GPU编号用逗号分隔，不含空格
+   - 自动启用张量并行(Tensor Parallelism)
+   - 建议使用相同型号GPU
 
-3. **GPU内存使用参考 | GPU Memory Usage Reference**:
-   - 3,000 tokens → ~8 GB VRAM
-   - 22,000 tokens → ~12 GB VRAM
-   - 41,000 tokens → ~16 GB VRAM
-   - 78,000 tokens → ~24 GB VRAM
-   - 154,000 tokens → ~40 GB VRAM
+3. **上下文长度控制 | Context Length Control**
+   - 通过UI设置Maximum context length
+   - 实际长度 = min(设置值, 模型原始窗口)
+   - 批处理优化：默认限制为min(context_length, 8192)
 
-4. **内存优化建议 | Memory Optimization Tips**:
-   - 降低上下文长度 | Reduce context length
-   - 减少最大输出token数 | Reduce maximum output tokens
-   - 使用更小的模型 | Use smaller models
+## 自定义扩展 | Customization
 
-## 自定义与扩展 | Customization & Extension
-
-- 支持自定义模型下载路径 | Custom model download paths
-- 可集成RAG等功能 | Integrable with RAG functionality
-- 可自定义UI组件 | Customizable UI components
-- 灵活的参数配置 | Flexible parameter configuration
+- 支持自定义模型路径 | Custom model paths
+- 可集成RAG等功能 | RAG integration
+- 可自定义UI组件 | UI customization
+- 灵活的参数配置 | Parameter configuration

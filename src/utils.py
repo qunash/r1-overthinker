@@ -55,7 +55,8 @@ LATEX_DELIMITERS = [
 MODEL_CONFIG = {
     "default_context_length": 21848,
     "min_context_length": 1024,
-    "gpu_device": "0"  # Unsloth只支持使用一个GPU
+    "gpu_device": "0,1",  # GPU配置
+    "model_path": None  # 将通过命令行参数设置
 }
 
 UI_CONFIG = {
@@ -97,7 +98,12 @@ class ModelManager:
         print(text)
         
     def get_available_models(self) -> List[str]:
-        """Get list of available DeepSeek R1 models."""
+        """Get list of available models."""
+        if MODEL_CONFIG["model_path"]:
+            # 如果指定了本地模型路径，直接返回
+            return [MODEL_CONFIG["model_path"]]
+            
+        # 否则搜索在线模型
         try:
             api = HfApi()
             models = api.list_models(
@@ -130,41 +136,51 @@ class ModelManager:
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
                     
-    def load_model(self, model_name: str) -> Tuple[str, bool]:
+    def load_model(self, model_path: str) -> Tuple[str, bool]:
         """Load specified model.
         
         Args:
-            model_name: Name of the model to load
+            model_path: Path to the model
             
         Returns:
             Tuple of (message, success)
         """
-        if model_name == self.current_model_name:
+        if model_path == self.current_model_name:
             return "Model already loaded", True
             
         try:
-            self.log_print(f"Loading model: {model_name}")
+            self.log_print(f"Loading model from: {model_path}")
             self.unload_current_model()
             
-            if not os.path.exists(f"models/{model_name}"):
-                self.log_print("Downloading model files...")
-                from load_model import download_model
-                if not download_model(model_name, f"models/{model_name}"):
-                    return "Failed to download model files", False
-                    
+            # 设置GPU设备
+            gpu_ids = MODEL_CONFIG["gpu_device"].replace(" ", "").split(",")
+            gpu_count = len(gpu_ids)
+            
+            # 设置CUDA可见设备
+            os.environ["CUDA_VISIBLE_DEVICES"] = MODEL_CONFIG["gpu_device"]
+            self.log_print(f"Setting CUDA_VISIBLE_DEVICES={MODEL_CONFIG['gpu_device']}")
+            self.log_print(f"Using {gpu_count} GPU(s): {gpu_ids}")
+            
+            # 确保max_num_batched_tokens >= max_model_len
+            max_num_batched_tokens = max(self.max_seq_length, 8192)
+            self.log_print(f"Setting max_num_batched_tokens to {max_num_batched_tokens}")
+            
             # 使用vllm加载模型
             self.model = LLM(
-                model=model_name,
-                download_dir=f"models/{model_name}",
-                tensor_parallel_size=1,  # 单GPU
+                model=model_path,  # 可以是本地路径或模型名称
+                tensor_parallel_size=gpu_count,  # 设置为实际的GPU数量
                 max_num_seqs=32,  # 批处理大小
-                max_num_batched_tokens=self.max_seq_length,
-                trust_remote_code=True
+                max_model_len=self.max_seq_length,  # 设置最大上下文长度
+                max_num_batched_tokens=max_num_batched_tokens,  # 确保大于等于max_model_len
+                trust_remote_code=True,
+                enforce_eager=True,  # 强制即时执行，避免编译开销
+                #gpu_memory_utilization=0.8,  # 控制每个GPU的内存使用率
+                skip_tokenizer_init=True  # 添加此参数
             )
             
-            self.current_model_name = model_name
-            self.log_print(f"Successfully loaded {model_name}")
-            return f"Successfully loaded {model_name}", True
+            self.current_model_name = model_path
+            self.log_print(f"Successfully loaded model from {model_path} with context length {self.max_seq_length}")
+            return f"Successfully loaded model", True
             
         except Exception as e:
             self.log_print(f"Error loading model: {str(e)}")
@@ -184,36 +200,48 @@ class ModelManager:
             final = torch.cuda.memory_allocated()
             self.log_print(f"GPU Memory freed: {(initial - final) / 1024**2:.2f} MB")
             
-    def set_context_length(self, length: int) -> bool:
-        """Set maximum sequence length."""
-        try:
-            length = int(length)
-            if length < MODEL_CONFIG["min_context_length"]:
-                length = MODEL_CONFIG["min_context_length"]
-            self.max_seq_length = length
-            return True
-        except:
-            return False
+    def set_context_length(self, context_length: int) -> None:
+        """设置上下文长度。
+        
+        Args:
+            context_length: 新的上下文长度
+        """
+        if context_length < MODEL_CONFIG["min_context_length"]:
+            self.log_print(f"Warning: context length {context_length} is less than minimum {MODEL_CONFIG['min_context_length']}")
+            context_length = MODEL_CONFIG["min_context_length"]
+        self.max_seq_length = context_length
 
 ###########################
 # 文本生成
 ###########################
 
 class TextGenerator:
-    """Text generator class implementing thinking process detection and replacement."""
+    """Text generator class for managing text generation."""
     
     def __init__(self, model_manager: ModelManager):
-        """Initialize text generator with model manager."""
+        """Initialize text generator.
+        
+        Args:
+            model_manager: ModelManager实例
+        """
         self.model_manager = model_manager
         self.params = DEFAULT_GENERATION_PARAMS.copy()
         self.replacement_tokens = DEFAULT_REPLACEMENT_TOKENS
         
     def update_params(self, **kwargs) -> None:
-        """Update generation parameters."""
+        """更新生成参数。
+        
+        Args:
+            **kwargs: 要更新的参数键值对
+        """
         self.params.update(kwargs)
         
     def set_replacement_tokens(self, tokens: str) -> None:
-        """Set replacement tokens for thinking process."""
+        """设置替换token列表。
+        
+        Args:
+            tokens: 换行符分隔的token列表
+        """
         self.replacement_tokens = tokens
         
     def generate(self, message: str, history: List[Dict]) -> Generator[List[ChatMessage], None, None]:

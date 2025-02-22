@@ -21,7 +21,7 @@ def download_model(model_name: str, local_dir: str = None):
             repo_id=model_name,
             local_dir="",
             force_download=False,  # Avoid re-downloading
-            resume_download=True   # Support download resumption
+            #resume_download=True   # Support download resumption
         )
         print(f"Successfully downloaded {model_name} to {local_dir}")
         return True
