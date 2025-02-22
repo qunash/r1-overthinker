@@ -1,0 +1,10 @@
+# Ignore Gradio certificate
+src/.gradio/
+
+# Ignore model files
+*.pth
+*.bin
+*.pt
+
+# Ignore Jupyter Notebook checkpoints  
+.ipynb_checkpoints/
